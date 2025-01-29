@@ -1,14 +1,19 @@
 'use client';
 
 import { FormEvent, useRef, useState } from 'react';
-import { QuestionResponse } from '@/types';
+import { Chat } from '@/types';
+import { Bot, Loader2, User } from 'lucide-react';
 
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [responses, setResponses] = useState<QuestionResponse[]>([]);
+  const [chat, setChat] = useState<Chat[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const onSubmit = async (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent): Promise<void> => {
+    if (loading) return;
+
     e.preventDefault();
+    setLoading(true);
 
     const res = await fetch(process.env.NEXT_PUBLIC_BASE_URL + '/api/ask', {
       method: 'POST',
@@ -20,23 +25,58 @@ export default function Home() {
       },
     });
 
-    const data: QuestionResponse = await res.json();
+    const data: { chat: Chat[] } = await res.json();
 
-    setResponses((prev) => [...prev, data]);
+    setChat(data?.chat);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+    setLoading(false);
   };
 
   return (
     <div className="h-screen flex flex-col justify-center items-center bg-gray-700">
-      <div className="flex-1 p-4 w-[600px] space-y-8">
-        {responses?.map((response) => (
-          <div className="space-y-4" key={response.id}>
-            <p className="text-lg font-semibold">
-              Question: {response.question}
-            </p>
-            <p className="text-base font-medium">{response.answer}</p>
-            <div className="w-full h-[0.5px] bg-gray-500"></div>
-          </div>
-        ))}
+      <div className="flex-1 p-4 w-[600px] overflow-y-auto max-h-[85vh] mb-auto mt-5 custom-scrollbar">
+        {chat?.length > 0 ? (
+          chat?.map((message, i) => {
+            if (message?.type === 'human') {
+              return (
+                <div className="space-y-4" key={message?.id}>
+                  {i > 0 && i !== chat.length - 1 && (
+                    <div className="w-full h-[0.5px] bg-gray-500"></div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-black rounded-full">
+                      <User size={24} className="text-whit" />
+                    </div>
+                    <p className="text-base font-medium">
+                      {message?.content?.toString()}
+                    </p>
+                  </div>
+                  <div className="w-full h-[0.5px] bg-gray-500"></div>
+                </div>
+              );
+            }
+
+            if (message?.type === 'ai') {
+              return (
+                <div key={message?.id} className="flex items-center gap-2 my-4">
+                  <div className="p-2 bg-black rounded-full">
+                    <Bot
+                      size={24}
+                      className="text-white bg-black rounded-full"
+                    />
+                  </div>
+                  <p className="text-base font-medium">
+                    {message?.content?.toString()}
+                  </p>
+                </div>
+              );
+            }
+          })
+        ) : (
+          <p>Ask anything you want to know</p>
+        )}
       </div>
       <div className="fixed bottom-5 w-[600px] bg-gray-200 rounded-lg border-t border-gray-300 p-4">
         <form className="flex gap-2" onSubmit={onSubmit}>
@@ -48,9 +88,12 @@ export default function Home() {
           />
           <button
             type="submit"
-            className="text-white bg-black px-10 font-semibold rounded-lg"
+            disabled={loading}
+            className={`text-white w-48 flex justify-center items-center font-semibold rounded-lg ${
+              loading ? 'bg-gray-500' : 'bg-black'
+            }`}
           >
-            Ask
+            {loading ? <Loader2 size={24} className="animate-spin" /> : 'Ask'}
           </button>
         </form>
       </div>

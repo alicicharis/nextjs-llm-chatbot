@@ -1,17 +1,35 @@
-import { QuestionResponse } from '@/types';
+import { Chat } from '@/types';
+import { invokeLlm, invokeChat } from '@/lang-chain';
+import { v4 as uuidv4 } from 'uuid';
+import { AIMessage, HumanMessage } from '@langchain/core/messages';
 
 export async function POST(request: Request) {
   const { question }: { question: string } = await request.json();
 
-  const uuid: string = crypto.randomUUID();
-  const questionResponse: QuestionResponse = {
-    id: uuid,
-    question,
-    answer: 'Paris',
-    createdAt: new Date().getTime(),
-  };
+  const llmResponse = await invokeChat(question);
 
-  return new Response(JSON.stringify(questionResponse), {
+  const chat: Chat[] = [];
+  llmResponse.forEach((message) => {
+    if (message instanceof HumanMessage) {
+      chat.push({
+        id: uuidv4(),
+        content: message.content,
+        type: 'human',
+        createdAt: new Date().getTime(),
+      });
+    }
+
+    if (message instanceof AIMessage) {
+      chat.push({
+        id: uuidv4(),
+        content: message.content,
+        type: 'ai',
+        createdAt: new Date().getTime(),
+      });
+    }
+  });
+
+  return new Response(JSON.stringify({ chat }), {
     headers: {
       'Content-Type': 'application/json',
     },

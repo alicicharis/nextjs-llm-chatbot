@@ -1,6 +1,8 @@
-export type QuestionResponse = {
+import { MessageContent } from '@langchain/core/messages';
+
+export type Chat = {
   id: string;
-  question: string;
-  answer: string;
+  content: MessageContent;
+  type: 'human' | 'ai';
   createdAt: number;
 };
